@@ -1,0 +1,11 @@
+Package: dragonegg-sdrmm-rx
+Version: 0.1.0-3
+Section: hamradio
+Priority: optional
+Architecture: arm64
+Maintainer: Bletchley West Labs <ops@localhost>
+Depends: adduser, systemd, python3, ca-certificates, iproute2
+Description: DragonEgg SDR-- receive-only network-client package
+ Network-client-only SDR-- UI plus DragonEgg RX-only rtl_tcp bridge.
+ Services install disabled and fail closed unless the exact LimeSDR Mini v2 serial
+ is present and an Ops gate explicitly enables/starts them.

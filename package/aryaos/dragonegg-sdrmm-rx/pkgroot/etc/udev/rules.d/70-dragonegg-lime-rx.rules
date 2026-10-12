@@ -1,0 +1,2 @@
+# Exact DragonEgg LimeSDR Mini v2. Handles bus/device changes by stable symlink only.
+SUBSYSTEM=="usb", ATTRS{serial}=="1DBB426135F6EC", SYMLINK+="dragonegg-lime-rx", GROUP="dragonegg", MODE="0660"

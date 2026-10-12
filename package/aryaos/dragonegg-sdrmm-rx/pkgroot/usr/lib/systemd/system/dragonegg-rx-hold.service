@@ -1,0 +1,6 @@
+[Unit]
+Description=DragonEgg RX fault hold alert
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/dragonegg-sdrmm/dragonegg-fault-hold

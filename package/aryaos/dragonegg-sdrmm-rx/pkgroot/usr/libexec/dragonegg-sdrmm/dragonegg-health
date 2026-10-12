@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+mode="${1:-status}"
+case "$mode" in
+  status)
+    systemctl is-enabled dragonegg-sdrmm-ui.service dragonegg-rtltcp-bridge.service || true
+    systemctl is-active dragonegg-sdrmm-ui.service dragonegg-rtltcp-bridge.service || true
+    ss -ltn sport = :18080 or sport = :1234 || true
+    test ! -f /run/dragonegg-sdrmm/rtltcp-bridge-metrics.json || python3 -c 'import itertools,sys; [sys.stdout.write(line) for line in itertools.islice(open("/run/dragonegg-sdrmm/rtltcp-bridge-metrics.json"),160)]'
+    ;;
+  rollback)
+    systemctl disable --now dragonegg-sdrmm-ui.service dragonegg-rtltcp-bridge.service || true
+    ss -ltn sport = :18080 or sport = :1234 || true
+    ;;
+  *) echo "usage: dragonegg-health [status|rollback]" >&2; exit 2;;
+esac

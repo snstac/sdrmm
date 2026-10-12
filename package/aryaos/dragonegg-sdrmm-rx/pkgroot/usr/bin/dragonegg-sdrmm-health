@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/libexec/dragonegg-sdrmm/dragonegg-health "$@"

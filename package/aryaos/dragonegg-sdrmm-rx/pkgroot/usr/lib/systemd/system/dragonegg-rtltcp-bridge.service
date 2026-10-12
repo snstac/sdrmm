@@ -1,0 +1,48 @@
+[Unit]
+Description=DragonEgg RX-only rtl_tcp bridge for SDR--
+Documentation=file:/usr/share/doc/dragonegg-sdrmm-rx/RUNBOOK.md
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=3600
+StartLimitBurst=1
+OnFailure=dragonegg-rx-hold.service
+
+[Service]
+Type=simple
+User=dragonegg
+Group=dragonegg
+EnvironmentFile=/etc/dragonegg-sdrmm/dragonegg-sdrmm.conf
+ExecStartPre=/usr/libexec/dragonegg-sdrmm/dragonegg-lime-gate --serial ${LIME_SERIAL}
+ExecStart=/usr/bin/python3 /usr/libexec/dragonegg-sdrmm/rx_only_rtltcp_bridge.py --source soapy-rx --bind ${RTL_TCP_BIND} --port ${RTL_TCP_PORT} --selector ${LIME_SELECTOR} --channel ${LIME_RX_CHANNEL} --antenna ${LIME_ANTENNA} --frequency-hz ${GMRS_INITIAL_FREQUENCY_HZ} --min-frequency-hz ${GMRS_MIN_FREQUENCY_HZ} --max-frequency-hz ${GMRS_MAX_FREQUENCY_HZ} --sample-rate-hz ${GMRS_SAMPLE_RATE_HZ} --min-sample-rate-hz ${GMRS_SAMPLE_RATE_HZ} --max-sample-rate-hz ${GMRS_SAMPLE_RATE_HZ} --metrics-path /run/dragonegg-sdrmm/rtltcp-bridge-metrics.json --duration-s ${RTL_TCP_DURATION_S}
+ExecStopPost=/usr/libexec/dragonegg-sdrmm/dragonegg-shutdown-receipt bridge
+Restart=no
+TimeoutStopSec=15
+RuntimeDirectory=dragonegg-sdrmm
+RuntimeDirectoryMode=0750
+StateDirectory=dragonegg-sdrmm
+LogsDirectory=dragonegg-sdrmm
+DevicePolicy=closed
+DeviceAllow=/dev/dragonegg-lime-rx rw
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProcSubset=pid
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+ReadWritePaths=/run/dragonegg-sdrmm /var/lib/dragonegg-sdrmm /var/log/dragonegg-sdrmm
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target

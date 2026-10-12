@@ -1,0 +1,50 @@
+[Unit]
+Description=DragonEgg SDR-- network-client-only UI
+Documentation=file:/usr/share/doc/dragonegg-sdrmm-rx/RUNBOOK.md
+After=network-online.target dragonegg-rtltcp-bridge.service
+Wants=network-online.target
+StartLimitIntervalSec=3600
+StartLimitBurst=2
+OnFailure=dragonegg-rx-hold.service
+
+[Service]
+Type=simple
+User=dragonegg
+Group=dragonegg
+EnvironmentFile=/etc/dragonegg-sdrmm/dragonegg-sdrmm.conf
+Environment=LD_LIBRARY_PATH=/opt/dragonegg-sdrmm/lib
+WorkingDirectory=/opt/dragonegg-sdrmm
+ExecStart=/opt/dragonegg-sdrmm/bin/sdrmm --server --listen ${SDRMM_BIND}:${SDRMM_PORT}
+ExecStopPost=/usr/libexec/dragonegg-sdrmm/dragonegg-shutdown-receipt ui
+Restart=on-failure
+RestartSec=10
+RuntimeMaxSec=1800
+RuntimeDirectory=dragonegg-sdrmm
+RuntimeDirectoryMode=0750
+StateDirectory=dragonegg-sdrmm
+LogsDirectory=dragonegg-sdrmm
+DevicePolicy=closed
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProcSubset=pid
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+ReadWritePaths=/run/dragonegg-sdrmm /var/lib/dragonegg-sdrmm /var/log/dragonegg-sdrmm
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target
