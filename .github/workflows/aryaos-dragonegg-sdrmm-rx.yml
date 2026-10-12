@@ -4,8 +4,13 @@ on:
   push:
     branches:
       - 'snstac/**'
+    tags:
+      - 'aryaos-rx-v*'
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-package:
@@ -23,4 +28,27 @@ jobs:
           path: |
             dist/dragonegg-sdrmm-rx_0.1.0-3_arm64.deb
             dist/dragonegg-sdrmm-rx_0.1.0-3_SHA256SUMS
+            dist/dragonegg-sdrmm-rx_0.1.0-3_BUILDINFO.txt
+  release-package:
+    needs: build-package
+    if: startsWith(github.ref, 'refs/tags/aryaos-rx-v')
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    steps:
+      - name: Download package assets
+        uses: actions/download-artifact@v4
+        with:
+          name: dragonegg-sdrmm-rx-arm64
+          path: dist
+      - name: Publish GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "AryaOS DragonEgg SDR-- RX $GITHUB_REF_NAME" \
+            --notes "AryaOS DragonEgg SDR-- RX arm64 package. Source archive is the tagged fork source for AGPL-3.0 correspondence." \
+            dist/dragonegg-sdrmm-rx_0.1.0-3_arm64.deb \
+            dist/dragonegg-sdrmm-rx_0.1.0-3_SHA256SUMS \
             dist/dragonegg-sdrmm-rx_0.1.0-3_BUILDINFO.txt

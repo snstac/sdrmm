@@ -1,6 +1,8 @@
 import os
 import pathlib
+import platform
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -15,16 +17,47 @@ def read(path):
     return path.read_text(encoding="utf-8")
 
 
+def arm64_runtime_command(binary, machine=None):
+    arch = machine or platform.machine()
+    if arch in {"aarch64", "arm64"}:
+        return [str(binary), "--help"]
+    return ["qemu-aarch64", "-L", "/usr/aarch64-linux-gnu", str(binary), "--help"]
+
+
 class AryaOSPackageTests(unittest.TestCase):
     def test_build_script_and_release_workflow_exist(self):
         script = ROOT / "scripts" / "build-aryaos-dragonegg-sdrmm-rx.sh"
         workflow = ROOT / ".github" / "workflows" / "aryaos-dragonegg-sdrmm-rx.yml"
         self.assertTrue(script.exists())
-        self.assertIn("dpkg-deb --root-owner-group --build", read(script))
+        self.assertIn("dpkg-deb --root-owner-group", read(script))
+        self.assertIn("--build", read(script))
+        self.assertIn("--uniform-compression -Zgzip -z9 --threads-max=1", read(script))
         self.assertIn("sha256sum", read(script))
+        self.assertIn("mktemp -d", read(script))
+        self.assertIn("mv -f", read(script))
         self.assertTrue(workflow.exists())
         self.assertIn("build-aryaos-dragonegg-sdrmm-rx.sh", read(workflow))
         self.assertIn("actions/upload-artifact", read(workflow))
+
+    def test_release_workflow_publishes_tagged_deb_assets(self):
+        workflow = read(ROOT / ".github" / "workflows" / "aryaos-dragonegg-sdrmm-rx.yml")
+        self.assertIn("'aryaos-rx-v*'", workflow)
+        self.assertIn("release-package:", workflow)
+        self.assertIn("contents: write", workflow)
+        self.assertIn("startsWith(github.ref, 'refs/tags/aryaos-rx-v')", workflow)
+        self.assertIn("actions/download-artifact", workflow)
+        self.assertIn("gh release create", workflow)
+        self.assertIn("dist/dragonegg-sdrmm-rx_0.1.0-3_arm64.deb", workflow)
+        self.assertIn("dist/dragonegg-sdrmm-rx_0.1.0-3_SHA256SUMS", workflow)
+        self.assertIn("dist/dragonegg-sdrmm-rx_0.1.0-3_BUILDINFO.txt", workflow)
+
+    def test_arm64_runtime_command_selects_native_on_arm64(self):
+        command = arm64_runtime_command("/pkg/opt/dragonegg-sdrmm/bin/sdrmm", "aarch64")
+        self.assertEqual(command, ["/pkg/opt/dragonegg-sdrmm/bin/sdrmm", "--help"])
+
+    def test_arm64_runtime_command_selects_qemu_on_x86_64(self):
+        command = arm64_runtime_command("/pkg/opt/dragonegg-sdrmm/bin/sdrmm", "x86_64")
+        self.assertEqual(command, ["qemu-aarch64", "-L", "/usr/aarch64-linux-gnu", "/pkg/opt/dragonegg-sdrmm/bin/sdrmm", "--help"])
 
     def test_source_license_and_provenance_are_declared(self):
         self.assertTrue((ROOT / "LICENSE").exists())
@@ -114,7 +147,15 @@ class AryaOSPackageTests(unittest.TestCase):
         self.assertNotEqual(bad.returncode, 0)
         self.assertIn("wildcard", bad.stderr + bad.stdout)
 
-    def test_deb_builds_and_arm64_binary_runs_under_qemu(self):
+    def test_deb_build_is_reproducible(self):
+        subprocess.run([str(ROOT / "scripts" / "build-aryaos-dragonegg-sdrmm-rx.sh")], cwd=ROOT, check=True)
+        first = subprocess.run(["sha256sum", str(DEB)], cwd=ROOT, check=True, text=True, capture_output=True).stdout.split()[0]
+        subprocess.run([str(ROOT / "scripts" / "build-aryaos-dragonegg-sdrmm-rx.sh")], cwd=ROOT, check=True)
+        second = subprocess.run(["sha256sum", str(DEB)], cwd=ROOT, check=True, text=True, capture_output=True).stdout.split()[0]
+        self.assertEqual(first, second)
+        subprocess.run(["sha256sum", "-c", str(DIST / "dragonegg-sdrmm-rx_0.1.0-3_SHA256SUMS")], cwd=ROOT, check=True)
+
+    def test_deb_builds_and_arm64_binary_runs(self):
         subprocess.run([str(ROOT / "scripts" / "build-aryaos-dragonegg-sdrmm-rx.sh")], cwd=ROOT, check=True)
         self.assertTrue(DEB.exists())
         info = subprocess.run(["dpkg-deb", "--field", str(DEB), "Package", "Version", "Architecture"], cwd=ROOT, check=True, text=True, capture_output=True).stdout
@@ -128,7 +169,10 @@ class AryaOSPackageTests(unittest.TestCase):
             libdir = extract / "opt" / "dragonegg-sdrmm" / "lib"
             env = os.environ.copy()
             env["LD_LIBRARY_PATH"] = str(libdir)
-            run = subprocess.run(["qemu-aarch64", "-L", "/usr/aarch64-linux-gnu", str(binary), "--help"], text=True, capture_output=True, env=env)
+            command = arm64_runtime_command(binary)
+            if command[0] == "qemu-aarch64" and shutil.which("qemu-aarch64") is None:
+                self.fail("qemu-aarch64 is required for x86_64 arm64 runtime proof")
+            run = subprocess.run(command, text=True, capture_output=True, env=env)
             self.assertEqual(run.returncode, 0, run.stderr)
             self.assertIn("Usage: sdrmm", run.stdout)
 
