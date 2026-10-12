@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+case "${1:-configure}" in
+  configure)
+    if ! getent group dragonegg >/dev/null; then addgroup --system dragonegg >/dev/null; fi
+    if ! id dragonegg >/dev/null 2>&1; then adduser --system --no-create-home --home /nonexistent --ingroup dragonegg --disabled-login --disabled-password dragonegg >/dev/null; fi
+    install -d -o root -g dragonegg -m 0750 /etc/dragonegg-sdrmm
+    install -d -o dragonegg -g dragonegg -m 0750 /var/lib/dragonegg-sdrmm /var/log/dragonegg-sdrmm
+    install -d -o dragonegg -g dragonegg -m 0750 /run/dragonegg-sdrmm 2>/dev/null || true
+    if [ ! -f /etc/dragonegg-sdrmm/token.env ]; then
+      umask 077
+      if command -v openssl >/dev/null 2>&1; then token="$(openssl rand -base64 32)"; else token="$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64)"; fi
+      tmp="/etc/dragonegg-sdrmm/token.env.$$"
+      printf 'SDRMM_TOKEN=%s\n' "$token" > "$tmp"
+      chown root:dragonegg "$tmp"
+      chmod 0600 "$tmp"
+      mv "$tmp" /etc/dragonegg-sdrmm/token.env
+    fi
+    # Deliberately do not enable or start RF/UI services at package install. Ops gate owns that action.
+    if command -v systemctl >/dev/null 2>&1; then systemctl daemon-reload >/dev/null 2>&1 || true; fi
+    ;;
+esac
+exit 0

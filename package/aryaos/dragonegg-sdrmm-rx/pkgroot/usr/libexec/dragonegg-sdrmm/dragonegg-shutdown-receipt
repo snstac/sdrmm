@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+name="${1:-service}"
+install -d -o dragonegg -g dragonegg -m 0750 /var/log/dragonegg-sdrmm 2>/dev/null || true
+printf '%s %s shutdown receipt\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$name" >> /var/log/dragonegg-sdrmm/shutdown-receipts.log 2>/dev/null || true

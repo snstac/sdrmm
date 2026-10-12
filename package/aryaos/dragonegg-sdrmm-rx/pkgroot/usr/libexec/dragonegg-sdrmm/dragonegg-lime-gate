@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+import argparse, pathlib, sys
+p=argparse.ArgumentParser()
+p.add_argument('--serial', required=True)
+ns=p.parse_args()
+serial=ns.serial.strip()
+if serial != '1DBB426135F6EC':
+    print('refusing unexpected serial', file=sys.stderr); sys.exit(2)
+found=[]
+for path in pathlib.Path('/sys/bus/usb/devices').glob('*/serial'):
+    try:
+        if path.read_text(encoding='utf-8', errors='ignore').strip()==serial:
+            found.append(path.parent.name)
+    except OSError:
+        pass
+if len(found)!=1:
+    print(f'exact Lime serial {serial} present count={len(found)}; failing closed', file=sys.stderr); sys.exit(3)
+if not pathlib.Path('/dev/dragonegg-lime-rx').exists():
+    print('/dev/dragonegg-lime-rx missing; udev ownership gate not satisfied', file=sys.stderr); sys.exit(4)
+print(f'Lime gate OK serial={serial} sysfs={found[0]} dev=/dev/dragonegg-lime-rx')

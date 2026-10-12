@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+install -d -o dragonegg -g dragonegg -m 0750 /var/lib/dragonegg-sdrmm /var/log/dragonegg-sdrmm 2>/dev/null || true
+date -u +%Y-%m-%dT%H:%M:%SZ > /var/lib/dragonegg-sdrmm/fault-hold.utc 2>/dev/null || true
+echo "DragonEgg RX service entered fault hold; operator review required before restart." >&2

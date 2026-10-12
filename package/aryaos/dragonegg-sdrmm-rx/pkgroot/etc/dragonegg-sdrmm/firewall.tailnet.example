@@ -1,0 +1,4 @@
+# Example only; not installed as an active firewall rule.
+# Allow authenticated SDR-- UI only from the approved tailnet interface/source.
+# Keep raw rtl_tcp bridge on 127.0.0.1 and never open TCP/1234 to tailnet/LAN.
+# nft add rule inet filter input iifname tailscale0 tcp dport 18080 ct state new accept
